@@ -50,6 +50,31 @@ interface FetchPluginsParams {
 export interface Tag {
   key: string;
   label: string;
+  count: number;
+}
+
+interface CategoryResponse {
+  topics_category_id: string;
+  category_nm: string;
+}
+
+interface TagConfig {
+  ext_slug: string;
+  options: { key: string; value: string }[];
+}
+
+interface PluginResponse {
+  topics_id: number;
+  subject: string;
+  description: string;
+  usage: string;
+  link: Link;
+  contents_type_nm: string;
+  tags: Tag[];
+  thumbnail: Thumbnail;
+  slug: string;
+  inst_ymdhi: string;
+  update_ymdhi: string;
 }
 
 function buildFilterQuery({ search, tags }: { search?: string; tags?: string[] }) {
@@ -102,8 +127,9 @@ export async function fetchPlugins({
     let errorMessage = 'Failed to fetch plugins';
     try {
       const errorJson = await response.json();
-      errorMessage = errorJson.errors.map((err: any) => err.message).join(", ") || errorMessage;
-    } catch (e) {
+      errorMessage = errorJson.errors.map((err: { message: string }) => err.message).join(", ") || errorMessage;
+    } catch (error) {
+      console.error('Error parsing error response:', error);
       const errorText = await response.text();
       errorMessage = errorText || errorMessage;
     }
@@ -114,7 +140,7 @@ export async function fetchPlugins({
   const data = await response.json();
 
   // データの整形
-  const plugins: Plugin[] = data.list.map((plugin: any) => ({
+  const plugins: Plugin[] = data.list.map((plugin: Omit<Plugin, 'tags'> & { tags: Tag[] }) => ({
     topics_id: plugin.topics_id,
     subject: plugin.subject,
     description: plugin.description,
@@ -150,7 +176,7 @@ export async function fetchCategories(): Promise<Category[]> {
     }
     const data = await response.json();
     if (data.list && Array.isArray(data.list)) {
-      return data.list.map((item: any) => ({
+      return data.list.map((item: CategoryResponse) => ({
         topics_category_id: item.topics_category_id,
         category_nm: item.category_nm,
         slug: item.topics_category_id,
@@ -173,9 +199,13 @@ export async function fetchTags(): Promise<Tag[]> {
     const data = await response.json();
 
     // `ext_config` 配列から `ext_slug: "tags"` を持つ項目を検索
-    const tagsConfig = data.ext_config.find((config: any) => config.ext_slug === "tags");
+    const tagsConfig = data.ext_config.find((config: TagConfig) => config.ext_slug === "tags");
     if (tagsConfig && Array.isArray(tagsConfig.options)) {
-      const tags: Tag[] = tagsConfig.options.map((option: any) => ({
+      interface TagOption {
+        key: string;
+        value: string;
+      }
+      const tags: Tag[] = tagsConfig.options.map((option: TagOption) => ({
         key: option.key,
         label: option.value, // `value` を `label` として使用
       }));
@@ -261,8 +291,9 @@ export async function fetchFavoritePlugins(): Promise<Plugin[]> {
       let errorMessage = 'Failed to fetch plugins';
       try {
         const errorJson = await response.json();
-        errorMessage = errorJson.errors.map((err: any) => err.message).join(", ") || errorMessage;
-      } catch (e) {
+        errorMessage = errorJson.errors.map((err: {message: string }) => err.message).join(", ") || errorMessage;
+      } catch (error) {
+        console.error('Error parsing error response:', error);
         const errorText = await response.text();
         errorMessage = errorText || errorMessage;
       }
@@ -275,8 +306,8 @@ export async function fetchFavoritePlugins(): Promise<Plugin[]> {
 
     // ローカルのお気に入りIDでフィルタリング
     return data.list
-      .filter((plugin: any) => favoriteIds.includes(plugin.topics_id))
-      .map((plugin: any) => ({
+      .filter((plugin: PluginResponse) => favoriteIds.includes(plugin.topics_id))
+      .map((plugin: PluginResponse) => ({
         topics_id: plugin.topics_id,
         subject: plugin.subject,
         description: plugin.description,

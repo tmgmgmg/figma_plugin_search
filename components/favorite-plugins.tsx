@@ -15,10 +15,12 @@ export function FavoritePlugins() {
         const plugins = await fetchFavoritePlugins();
         setFavoritePlugins(plugins);
         setIsLoading(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error loading favorites:", err);
         setError(
-          `お気に入りの読み込み中にエラーが発生しました: ${err.message}`
+          `お気に入りの読み込み中にエラーが発生しました: ${getErrorMessage(
+            err
+          )}`
         );
         setIsLoading(false);
       }
@@ -40,4 +42,10 @@ export function FavoritePlugins() {
   }
 
   return <PluginGrid plugins={favoritePlugins} />;
+}
+
+// エラーメッセージを取得するヘルパー関数
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
 }

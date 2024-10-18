@@ -9,8 +9,6 @@ import {
   fetchPlugins,
   fetchCategories,
   fetchTagsWithCount,
-  Plugin,
-  PageInfo,
 } from "@/lib/kuroco";
 import { PluginCardSkeleton } from "@/components/plugin-card-skeleton";
 
@@ -49,7 +47,7 @@ async function fetchPageData(searchParams: HomeProps["searchParams"]) {
       categories,
       tagsWithCount,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(err);
     return {
       plugins: [],
